@@ -10,8 +10,9 @@
 
 
 ///////////////////////////// Operation Mode /////////////////////////
-#define CONVERT_TO_DEG_C      // Uncomment to print tempurature to serial; comment to print resistance instead
-#define LED_WARNING           // Uncomment to light LEDs when tempurature gets too high (uses resistance values)
+#define CONVERT_TO_DEG_C      // Uncomment to print tempurature to serial; comment to print resistance instead.
+#define LED_WARNING           // Uncomment to light LEDs when tempurature gets too high (uses resistance values).
+#define LCD_SCREEN            // Uncomment to use liquid crystal lcd through the scl and sdc pins.
 
 
 ///////////////////////////// Constant values ////////////////////////
