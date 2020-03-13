@@ -14,6 +14,12 @@
 #define LED_WARNING           // Uncomment to light LEDs when tempurature gets too high (uses resistance values).
 #define LCD_SCREEN            // Uncomment to use liquid crystal lcd through the scl and sdc pins.
 
+#ifdef LCD_SCREEN
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <stdio.h>
+#endif
+
 
 ///////////////////////////// Constant values ////////////////////////
 #define BAUD_RATE 9600
@@ -37,15 +43,30 @@
   #define ERROR_PIN_NEG 9
 #endif  // LED_WARNING
 
+#ifdef LCD_SCREEN
+#define LCD_ROWS 2
+#define LCD_COLUMNS 16
+#define LCD_STR_WIDTH (LCD_COLUMNS / 2)
+#define LCD_REFRESH_MS 1000
+#define LCD_REFRESH_TICKS (LCD_REFRESH_MS / DELAY_MS)
+#endif  // LCD_SCREEN
 
 //////////////////////////////// Globals ////////////////////////////
 int voltage_raw[NUM_THERMISTORS]; //This is the measured voltage(s)
 int pins[NUM_THERMISTORS];
 
 #ifdef LED_WARNING
+int temp_ok;
 int temp_warning;
 int temp_error;
 #endif  // LED_WARNING
+
+#ifdef LCD_SCREEN
+LiquidCrystal_I2C lcd(0x27, LCD_COLUMNS, LCD_ROWS);
+int lcd_ticks;
+bool lcd_print;
+char lcd_str[LCD_STR_WIDTH];
+#endif  // LCD_SCREEN
 
 
 /////////////////////////////// Functions //////////////////////////
@@ -59,10 +80,9 @@ inline float raw_to_resistance(int v) {
   float res = R_REF / buffer; // R1 = R2 / (Vin / Vout - 1)
 
   #ifdef LED_WARNING
-  if (res < WARNING_RES)
-    temp_warning = 1;
-  if (res < ERROR_RES)
-    temp_error = 1;
+  temp_ok = res >= WARNING_RES ? temp_ok : 0;
+  temp_warning = res < WARNING_RES ? 1 : temp_warning;
+  temp_error = res < ERROR_RES ? 1 : temp_error;
   #endif  // LED_WARNING
   
   return res;
@@ -85,6 +105,11 @@ inline float raw_to_resistance(int v) {
 void print_temp(int v) {
   float res = raw_to_resistance(v);
   float temp = D + A / (1 + pow((res / C), B));
+
+  #ifdef LCD_SCREEN
+  sprintf(lcd_str, "T: %s", String(temp).c_str());
+  lcd.printstr(lcd_str);
+  #endif  // LCD_SCREEN
   
   Serial.print(',');
   Serial.print(' ');
@@ -99,9 +124,17 @@ void print_temp(int v) {
  * to serial with leading space.
  */
 void print_res(int v) {
+  float res = raw_to_resistance(v);
+
+  
+  #ifdef LCD_SCREEN
+  sprintf(lcd_str, "T: %s", String(res).c_str());
+  lcd.printstr(lcd_str);
+  #endif  // LCD_SCREEN
+  
   Serial.print(',');
   Serial.print(' ');
-  Serial.print(raw_to_resistance(v));
+  Serial.print(res);
 }
 
 
@@ -149,6 +182,21 @@ void setup() {
   digitalWrite(ERROR_PIN_POS, HIGH);
   digitalWrite(ERROR_PIN_NEG, HIGH);
   #endif  // LED_WARNING
+
+  // Set up LCD screen
+  #ifdef LCD_SCREEN
+  lcd.init();
+  lcd.backlight();
+  lcd_ticks = 0;
+  lcd_print = true;
+
+  lcd.setCursor(1,0);
+  lcd.printstr("Tempurature");
+  lcd.setCursor(1,1);
+  lcd.printstr("Sensor Init");
+  lcd.setCursor(0,0);
+  delay(1000);
+  #endif // LCE_SCREEN
 }
 
 
@@ -181,6 +229,7 @@ void loop() {
   
   // Initialize warnings to check if tempurature is getting to high
   #ifdef LED_WARNING
+  temp_ok = 1;
   temp_warning = 0;
   temp_error = 0;
   #endif  // LED_WARNING
@@ -193,6 +242,11 @@ void loop() {
     #else
     print_res(voltage_raw[i]);
     #endif
+
+    #ifdef LCD_SCREEN
+    if (i + 1 == NUM_THERMISTORS / 2)
+      lcd.setCursor(0,1);
+    #endif  // LCD_SCREEN
   }
 
   // Turn on LEDs if there are warnings/errors
@@ -203,6 +257,12 @@ void loop() {
   #endif  // LED_WARNING
 
   Serial.print("\n");
+
+  #ifdef LCD_SCREEN
+  lcd_ticks = (lcd_ticks + 1) % LCD_REFRESH_TICKS;
+  lcd_print = !lcd_ticks;
+  lcd.setCursor(0,0);
+  #endif  // LCD_SCREEN
 
   // Time delay between measurements.
   delay(DELAY_MS);
