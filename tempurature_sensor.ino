@@ -251,7 +251,7 @@ void loop() {
 
   // Turn on LEDs if there are warnings/errors
   #ifdef LED_WARNING
-  digitalWrite(ERROR_PIN_NEG, temp_warning || temp_error ? HIGH : LOW);
+  digitalWrite(OK_PIN_NEG, temp_ok ? LOW : HIGH);
   digitalWrite(WARNING_PIN_NEG, temp_warning ? LOW : HIGH);
   digitalWrite(ERROR_PIN_NEG, temp_error ? LOW : HIGH);
   #endif  // LED_WARNING
